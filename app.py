@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from models.user import User
 from database import db
-from flask_login import LoginManager, login_required, login_user, logout_user
+from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -51,12 +51,43 @@ def create_user():
     db.session.commit()
     return jsonify({"message": "Sign up success"})
   return jsonify({"message": "Invalid Data"}), 400
+
+@app.route('/user/<int:user_id>', methods=["GET"])
+@login_required
+def read_user(user_id):
+  user = User.query.get(user_id)
   
+  if user:
+    return {"username": user.username}
+  
+  return jsonify({"message": "User not found"}), 404
 
-@app.route("/hello-world", methods=["GET"])
-def hello_world():
-  return 'Oie'
+@app.route('/user/<int:user_id>', methods=["PUT"])
+@login_required
+def update_user(user_id):
+  data = request.json
+  user = User.query.get(user_id)
+  
+  if user and data.get("password"):
+    user.password = data.get("password")
+    db.session.commit()
+    return jsonify({"message": f"User {user_id} updated with success"})
+  
+  return jsonify({"message": "User not found"}), 404
 
+@app.route('/user/<int:user_id>', methods=["DELETE"])
+@login_required
+def delete_user(user_id):
+  user = User.query.get(user_id)
+  if user and user_id != current_user.id:
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"message": f"User {user_id} deleted with success"})
+  elif user_id == current_user.id:
+    return jsonify({"message": "Deletion not permmited"}), 403
+  else:
+    return jsonify({"message": "User not found"}), 404
+    
 if __name__ == '__main__':
   app.run(debug=True)
   
