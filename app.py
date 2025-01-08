@@ -46,7 +46,7 @@ def create_user():
   password = data.get("password")
   
   if username and password:
-    user = User(username = username, password = password)
+    user = User(username = username, password = password, role='user')
     db.session.add(user)
     db.session.commit()
     return jsonify({"message": "Sign up success"})
@@ -67,8 +67,10 @@ def read_user(user_id):
 def update_user(user_id):
   data = request.json
   user = User.query.get(user_id)
-  
-  if user and data.get("password"):
+
+  if user_id != current_user.id and current_user.role == "user": 
+    return jsonify({"message": "Operation not allowed"}), 403
+  elif user and data.get("password"):
     user.password = data.get("password")
     db.session.commit()
     return jsonify({"message": f"User {user_id} updated with success"})
@@ -79,12 +81,15 @@ def update_user(user_id):
 @login_required
 def delete_user(user_id):
   user = User.query.get(user_id)
-  if user and user_id != current_user.id:
+
+  if user_id != current_user.id and current_user.role == "user": 
+    return jsonify({"message": "Operation not allowed"}), 403
+  elif user_id == current_user.id:
+    return jsonify({"message": "Deletion not permmited"}), 403
+  elif user and user_id != current_user.id:
     db.session.delete(user)
     db.session.commit()
     return jsonify({"message": f"User {user_id} deleted with success"})
-  elif user_id == current_user.id:
-    return jsonify({"message": "Deletion not permmited"}), 403
   else:
     return jsonify({"message": "User not found"}), 404
     
